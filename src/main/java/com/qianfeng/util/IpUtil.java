@@ -13,7 +13,7 @@ public class IpUtil {
 
     public static void main(String[] args) {
 
-        System.out.println(getCity("58.0.3029.110"));
+        System.out.println(getCity("192.168.243.1"));
 
     }
 

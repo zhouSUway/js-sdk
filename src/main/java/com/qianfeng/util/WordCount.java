@@ -32,10 +32,7 @@ public class WordCount {
 
             StringTokenizer itr = new StringTokenizer(line);
             while (itr.hasMoreTokens()){
-               word.set(itr.nextToken());
-               context.write(word,one);
-               System.out.println(word);
-               System.out.println(itr.nextToken());
+                word.set(itr.nextToken());
             }
         }
     }
@@ -66,12 +63,11 @@ public class WordCount {
 
         Configuration conf = new Configuration();
 
-        conf.set("fs.default.name","hdfs://192.168.243.130:9000");
+        conf.set("fs.defaultFS","hdfs://192.168.243.130:9000");
 
         Job job =Job.getInstance(conf);
 
         job.setJarByClass(WordCount.class);
-        job.setJar("WordCount.jar");
         job.setJobName("WordCount");
 
         job.setOutputKeyClass(Text.class);
