@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.IOException;
 import java.util.StringTokenizer;
@@ -22,20 +23,26 @@ public class WordCount {
         private Text word = new Text();
 
         @Override
-        protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+        protected void map(Object key, Text values, Context context) throws IOException, InterruptedException {
 
-            String lines = value.toString();
+            String lines = values.toString();
+            String[] splited = lines.split(" ");
+            String ip = splited[0];
+            String times = splited[3]+" "+splited[4];
 
-            String splited[] = lines.split(" ");
+            ip = IpUtil.getCity(ip);
+            times=DateUtil.getTime(times);
 
-            String line = splited[0];
-
-            StringTokenizer itr = new StringTokenizer(line);
+            StringTokenizer itr = new StringTokenizer(ip+" "+times);
             while (itr.hasMoreTokens()){
                 word.set(itr.nextToken());
+                context.write(word,one);
             }
+
         }
     }
+
+
 
 
     public static class Reduce extends  Reducer<Text,IntWritable,Text,IntWritable>{
@@ -46,46 +53,42 @@ public class WordCount {
         @Override
         protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
 
-            int sum = 0;
-            for(IntWritable val :values){
-                sum+=val.get();
+            for (IntWritable val :values){
+                context.write(key,val);
             }
-
-            result.set(sum);
-
-            context.write(key,result);
-
         }
     }
 
 
     public static void main(String[] args) throws Exception {
 
+        args = new String[]{"hdfs://192.168.243.130:9000/logs/12/01/BC-23.1543679512738.log",
+                "hdfs://192.168.243.130:9000/logs/output"};
         Configuration conf = new Configuration();
+        conf.set("fs.defaultFS",  "hdfs://192.168.243.130:9000");
 
-        conf.set("fs.defaultFS","hdfs://192.168.243.130:9000");
+        String[] otherArgs = new GenericOptionsParser(conf,args).getRemainingArgs();
+        if(otherArgs.length<2){
+            System.out.println("USage:wordCount<in><out>");
+            System.exit(2);
+        }
 
-        Job job =Job.getInstance(conf);
-
+        //创新job并且名字
+        Job job = Job.getInstance(conf,"wordcount");
+        //1.设置job运行的类
         job.setJarByClass(WordCount.class);
-        job.setJobName("WordCount");
+
+        job.setMapperClass(Map.class);
+        job.setReducerClass(Reduce.class);
+
+        FileInputFormat.addInputPath(job,new Path(args[0]));
+        FileOutputFormat.setOutputPath(job,new Path(args[1]));
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
-        job.setMapperClass(Map.class);
-        job.setReducerClass(Reduce.class);
-        job.setCombinerClass(Reduce.class);
+        boolean isSuccess = job.waitForCompletion(true);
 
-        String inPath ="/logs/12/01/*.log";
-        String outPath = "/logs/wordcount";
-
-        FileInputFormat.addInputPath(job, new Path(inPath));
-        FileOutputFormat.setOutputPath(job, new Path(outPath));
-
-
-        System.out.println("success");
-
-        System.exit(job.waitForCompletion(true)?0:1);
+        System.out.println(isSuccess?0:1);
 
     }
 }
